@@ -1,0 +1,36 @@
+{
+    "format_version": 2,
+    "header": {
+        "description": "The foundation for Steven, a script-driven AI companion by ShifoLabs.",
+        "name": "Steven AI Assistant BP",
+        "uuid": "9712a0d8-bca3-42d5-bc62-be8751b9cdd2",
+        "version": [1, 0, 0],
+        "min_engine_version": [1, 21, 0]
+    },
+    "modules": [
+        {
+            "description": "The foundation for Steven, a script-driven AI companion by ShifoLabs.",
+            "type": "data",
+            "uuid": "677c59e4-334d-466e-aabc-d3e720d2799d",
+            "version": [1, 0, 0]
+        }
+    ],
+    "dependencies": [
+        {
+            "uuid": "b7a0d2eb-8b25-44ae-94f6-78d4db640d70",
+            "version": [1, 0, 0]
+        },
+        {
+            "module_name": "@minecraft/server",
+            "version": "1.13.0"
+        },
+        {
+            "module_name": "@minecraft/server-ui",
+            "version": "1.13.0"
+        },
+        {
+            "module_name": "@minecraft/server-admin",
+            "version": "1.0.0-beta"
+        }
+    ]
+}
