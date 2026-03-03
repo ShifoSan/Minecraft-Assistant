@@ -177,17 +177,235 @@ function autoHeal(entity) {
 }
 
 // ---------------------------------------------------------------------------
+// Chat Listener for Commands
+// ---------------------------------------------------------------------------
+world.beforeEvents.chatSend.subscribe((event) => {
+    const message = event.message;
+    if (!message.startsWith("@")) return;
+
+    // Cancel the event so it doesn't show in public chat
+    event.cancel = true;
+
+    const player = event.sender;
+    const args = message.substring(1).trim().split(" ");
+    const command = args[0].toLowerCase();
+    const arg = args.slice(1).join(" ");
+
+    // Find the nearest Steven to the player
+    const dimension = player.dimension;
+    const stevens = dimension.getEntities({
+        type: "shifolabs:steven",
+        location: player.location,
+        maxDistance: 20
+    });
+
+    if (stevens.length === 0) {
+        player.sendMessage("§cNo Steven found nearby!");
+        return;
+    }
+
+    // Just take the closest one
+    const steven = stevens[0];
+
+    system.run(() => {
+        handleCommand(steven, player, command, arg);
+    });
+});
+
+function sendStevenMessage(steven, player, text) {
+    const isSilent = steven.getDynamicProperty("isSilent");
+    if (!isSilent) {
+        player.sendMessage(`§aSteven: §f${text}`);
+    }
+}
+
+function handleCommand(steven, player, command, arg) {
+    switch (command) {
+        case "come": {
+            // Safety check: ensure he doesn't spawn in blocks or over lava
+            // If player is in air, teleport to safe solid ground nearby
+            let targetLoc = player.location;
+            const dimension = player.dimension;
+
+            // Try to find a safe location around the player
+            let safeLoc = null;
+            // Scan downwards from player to find ground
+            for (let y = Math.floor(targetLoc.y); y >= -64; y--) {
+                const blockLoc = { x: Math.floor(targetLoc.x), y: y, z: Math.floor(targetLoc.z) };
+                const block = dimension.getBlock(blockLoc);
+                if (block && !block.isAir && !block.isLiquid) {
+                    if (block.typeId !== "minecraft:lava" && block.typeId !== "minecraft:flowing_lava") {
+                        // Found a solid block, place steven above it
+                        safeLoc = { x: targetLoc.x, y: y + 1, z: targetLoc.z };
+                        break;
+                    }
+                }
+            }
+
+            if (safeLoc) {
+                steven.teleport(safeLoc, { dimension: dimension });
+                sendStevenMessage(steven, player, "I'm right beside you.");
+            } else {
+                steven.teleport(targetLoc, { dimension: dimension });
+                sendStevenMessage(steven, player, "Teleported to you.");
+            }
+            break;
+        }
+        case "stay":
+            steven.triggerEvent("steven:cmd_stay");
+            steven.addTag("state:staying");
+            steven.removeTag("state:moving");
+            sendStevenMessage(steven, player, "I will stay right here.");
+            break;
+        case "follow": {
+            steven.triggerEvent("steven:cmd_follow");
+            steven.addTag("state:moving");
+            steven.removeTag("state:staying");
+
+            // Ensure owner is set correctly to the player
+            const tameable = steven.getComponent("minecraft:tameable");
+            if (tameable && !steven.hasComponent("minecraft:is_tamed")) {
+                tameable.tame(player);
+            }
+
+            const distance = parseInt(arg);
+            if (!isNaN(distance) && distance > 0) {
+                steven.setProperty("steven:follow_distance", Math.min(distance, 100));
+            } else {
+                steven.setProperty("steven:follow_distance", 3); // default 3 blocks
+            }
+            sendStevenMessage(steven, player, "I am following you now.");
+            break;
+        }
+        case "sethome":
+            steven.setDynamicProperty("home_x", steven.location.x);
+            steven.setDynamicProperty("home_y", steven.location.y);
+            steven.setDynamicProperty("home_z", steven.location.z);
+            steven.setDynamicProperty("home_dimension", steven.dimension.id);
+            sendStevenMessage(steven, player, "Home location set to these coordinates.");
+            break;
+        case "silence": {
+            const currentSilence = steven.getDynamicProperty("isSilent") || false;
+            steven.setDynamicProperty("isSilent", !currentSilence);
+            if (!currentSilence) {
+                // If it wasn't silent before, send the message, then it's silenced.
+                player.sendMessage(`§aSteven: §fI will be quiet now.`);
+            } else {
+                // Now it's not silent, send confirmation
+                sendStevenMessage(steven, player, "I can speak again.");
+            }
+            break;
+        }
+        case "report": {
+            const healthComp = steven.getComponent("minecraft:health");
+            const hp = healthComp ? `${Math.floor(healthComp.currentValue)}/${healthComp.effectiveMax}` : "Unknown";
+            const loc = steven.location;
+
+            let reportMsg = `§e--- Steven's Report ---\n`;
+            reportMsg += `§bHP:§f ${hp}\n`;
+            reportMsg += `§bLocation:§f ${Math.floor(loc.x)}, ${Math.floor(loc.y)}, ${Math.floor(loc.z)} (${steven.dimension.id})\n`;
+
+            const inventory = steven.getComponent("minecraft:inventory")?.container;
+            if (inventory) {
+                reportMsg += `§bInventory:§f\n`;
+                const itemCounts = {};
+                for (let i = 0; i < inventory.size; i++) {
+                    const item = inventory.getItem(i);
+                    if (item) {
+                        const name = item.typeId.replace("minecraft:", "").replace(/_/g, " ");
+                        if (itemCounts[name]) {
+                            itemCounts[name] += item.amount;
+                        } else {
+                            itemCounts[name] = item.amount;
+                        }
+                    }
+                }
+
+                const items = Object.keys(itemCounts);
+                if (items.length === 0) {
+                    reportMsg += `  (Empty)\n`;
+                } else {
+                    for (const name of items) {
+                        reportMsg += `  - ${name}: ${itemCounts[name]}\n`;
+                    }
+                }
+            } else {
+                reportMsg += `§bInventory:§f None\n`;
+            }
+
+            player.sendMessage(reportMsg);
+            sendStevenMessage(steven, player, "Report sent.");
+            break;
+        }
+        case "rename": {
+            if (!arg) {
+                sendStevenMessage(steven, player, "Please provide a name.");
+                break;
+            }
+            let newName = arg;
+            if (newName.length > 32) {
+                newName = newName.substring(0, 32);
+            }
+            steven.nameTag = newName;
+            sendStevenMessage(steven, player, `My name is now ${newName}.`);
+            break;
+        }
+        case "forget": {
+            // The "Panic Button"
+            steven.triggerEvent("steven:cmd_stay");
+            steven.removeTag("state:moving");
+            steven.removeTag("state:staying");
+            sendStevenMessage(steven, player, "Forgot all tasks. Standing by.");
+            break;
+        }
+        default:
+            player.sendMessage(`§cUnknown command: @${command}`);
+            break;
+    }
+}
+
+
+// ---------------------------------------------------------------------------
 // System Loop
 // ---------------------------------------------------------------------------
 system.runInterval(() => {
     // Run every 5 seconds (100 ticks)
+
+    // Create a Set to keep track of processed stevens so we don't process them multiple times
+    // if there are multiple players in the same dimension.
+    const processedStevens = new Set();
+
     for (const player of world.getAllPlayers()) {
         const dimension = player.dimension;
-        // Optimization: Could keep track of stevens, but getting entities by type in dimension is fine for now
         const stevens = dimension.getEntities({ type: "shifolabs:steven" });
+
         for (const steven of stevens) {
+            if (processedStevens.has(steven.id)) continue;
+            processedStevens.add(steven.id);
+
             autoEquip(steven);
             autoHeal(steven);
+
+            // Failsafe for following
+            if (steven.hasTag("state:moving")) {
+                const tameable = steven.getComponent("minecraft:tameable");
+
+                // For simplicity, we assume the command issuer is the nearest player or the one who tamed him
+                // We find the nearest player in a 100 block radius to check distance
+                const players = dimension.getPlayers({ location: steven.location, maxDistance: 100 });
+                if (players.length > 0) {
+                    const nearestPlayer = players[0];
+                    const dx = steven.location.x - nearestPlayer.location.x;
+                    const dy = steven.location.y - nearestPlayer.location.y;
+                    const dz = steven.location.z - nearestPlayer.location.z;
+                    const distanceSq = dx * dx + dy * dy + dz * dz;
+
+                    if (distanceSq > 20 * 20) {
+                        // Trigger @come logic to teleport closer
+                        handleCommand(steven, nearestPlayer, "come", "");
+                    }
+                }
+            }
         }
     }
 }, 100);

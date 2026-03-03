@@ -4,14 +4,44 @@
         "description": {
             "identifier": "shifolabs:steven",
             "is_spawnable": true,
-            "is_summonable": true
+            "is_summonable": true,
+            "properties": {
+                "steven:follow_distance": {
+                    "type": "int",
+                    "default": 3,
+                    "range": [ 1, 100 ]
+                }
+            }
+        },
+        "component_groups": {
+            "steven:following": {
+                "minecraft:behavior.follow_owner": {
+                    "priority": 3,
+                    "speed_multiplier": 1.2,
+                    "start_distance": "q.property('steven:follow_distance')",
+                    "stop_distance": 1,
+                    "postpone_distance": 20
+                }
+            },
+            "steven:staying": {
+            }
         },
         "components": {
             "minecraft:physics": {},
             "minecraft:collision_box": { "width": 0.6, "height": 1.8 },
             "minecraft:movement": { "value": 0.3 },
+            "minecraft:movement.basic": {},
+            "minecraft:jump.static": {},
             "minecraft:navigation.walk": { "can_path_over_water": true, "avoid_water": true },
             "minecraft:health": { "value": 20, "max": 20 },
+            "minecraft:tameable": {
+                "probability": 1.0,
+                "tame_items": "minecraft:apple",
+                "tame_event": {
+                    "event": "steven:on_tame",
+                    "target": "self"
+                }
+            },
             "minecraft:nameable": {},
             "minecraft:type_family": { "family": [ "shifolabs_steven", "mob" ] },
             "minecraft:behavior.look_at_player": { "priority": 1, "look_distance": 8.0 },
@@ -26,6 +56,17 @@
                     { "slot": "slot.armor.feet" }
                 ]
             }
+        },
+        "events": {
+            "steven:cmd_follow": {
+                "add": { "component_groups": [ "steven:following" ] },
+                "remove": { "component_groups": [ "steven:staying" ] }
+            },
+            "steven:cmd_stay": {
+                "add": { "component_groups": [ "steven:staying" ] },
+                "remove": { "component_groups": [ "steven:following" ] }
+            },
+            "steven:on_tame": {}
         }
     }
 }
