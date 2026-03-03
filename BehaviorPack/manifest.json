@@ -9,10 +9,18 @@
     },
     "modules": [
         {
-            "description": "The foundation for Steven, a script-driven AI companion by ShifoLabs.",
+            "description": "Behavior logic for Steven",
             "type": "data",
             "uuid": "677c59e4-334d-466e-aabc-d3e720d2799d",
             "version": [1, 0, 0]
+        },
+        {
+            "description": "Scripts for Steven AI Assistant",
+            "type": "script",
+            "language": "javascript",
+            "uuid": "a1b2c3d4-e5f6-7890-1234-56789abcdef0",
+            "version": [1, 0, 0],
+            "entry": "scripts/main.js"
         }
     ],
     "dependencies": [
@@ -20,17 +28,8 @@
             "uuid": "b7a0d2eb-8b25-44ae-94f6-78d4db640d70",
             "version": [1, 0, 0]
         },
-        {
-            "module_name": "@minecraft/server",
-            "version": "1.13.0"
-        },
-        {
-            "module_name": "@minecraft/server-ui",
-            "version": "1.13.0"
-        },
-        {
-            "module_name": "@minecraft/server-admin",
-            "version": "1.0.0-beta"
-        }
+        { "module_name": "@minecraft/server", "version": "1.13.0" },
+        { "module_name": "@minecraft/server-ui", "version": "1.13.0" },
+        { "module_name": "@minecraft/server-admin", "version": "1.0.0-beta" }
     ]
 }
