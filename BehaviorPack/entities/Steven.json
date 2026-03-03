@@ -23,7 +23,81 @@
                     "postpone_distance": 20
                 }
             },
+            "steven:sprint_following": {
+                "minecraft:behavior.follow_owner": {
+                    "priority": 3,
+                    "speed_multiplier": 2.0,
+                    "start_distance": 1,
+                    "stop_distance": 1,
+                    "postpone_distance": 20
+                }
+            },
             "steven:staying": {
+            },
+            "steven:guarding": {
+                "minecraft:behavior.nearest_attackable_target": {
+                    "priority": 1,
+                    "entity_types": [
+                        { "filters": { "test": "is_family", "subject": "other", "value": "monster" }, "max_dist": 20 }
+                    ],
+                    "must_see": true
+                },
+                "minecraft:behavior.melee_attack": {
+                    "priority": 2,
+                    "speed_multiplier": 1.5,
+                    "track_target": true
+                }
+            },
+            "steven:guarding_return": {
+            },
+            "steven:protecting": {
+                "minecraft:behavior.owner_hurt_by_target": {
+                    "priority": 1
+                },
+                "minecraft:behavior.owner_hurt_target": {
+                    "priority": 1
+                },
+                "minecraft:behavior.nearest_attackable_target": {
+                    "priority": 2,
+                    "entity_types": [
+                        { "filters": { "test": "is_family", "subject": "other", "value": "monster" }, "max_dist": 15 }
+                    ],
+                    "must_see": true
+                },
+                "minecraft:behavior.melee_attack": {
+                    "priority": 3,
+                    "speed_multiplier": 1.5,
+                    "track_target": true
+                },
+                "minecraft:behavior.follow_owner": {
+                    "priority": 4,
+                    "speed_multiplier": 1.2,
+                    "start_distance": 5,
+                    "stop_distance": 2,
+                    "postpone_distance": 20
+                }
+            },
+            "steven:distracting": {
+                "minecraft:behavior.nearest_attackable_target": {
+                    "priority": 1,
+                    "entity_types": [
+                        {
+                            "filters": {
+                                "all_of": [
+                                    { "test": "is_family", "subject": "other", "value": "monster" },
+                                    { "test": "distance_to_nearest_player", "operator": ">=", "value": 10 }
+                                ]
+                            },
+                            "max_dist": 30
+                        }
+                    ],
+                    "must_see": true
+                },
+                "minecraft:behavior.melee_attack": {
+                    "priority": 2,
+                    "speed_multiplier": 1.5,
+                    "track_target": true
+                }
             }
         },
         "components": {
@@ -55,16 +129,46 @@
                     { "slot": "slot.armor.legs" },
                     { "slot": "slot.armor.feet" }
                 ]
+            },
+            "minecraft:attack": {
+                "damage": 3
             }
         },
         "events": {
             "steven:cmd_follow": {
                 "add": { "component_groups": [ "steven:following" ] },
-                "remove": { "component_groups": [ "steven:staying" ] }
+                "remove": { "component_groups": [ "steven:staying", "steven:guarding", "steven:protecting", "steven:distracting", "steven:sprint_following" ] }
+            },
+            "steven:cmd_sprint_follow": {
+                "add": { "component_groups": [ "steven:sprint_following" ] },
+                "remove": { "component_groups": [ "steven:staying", "steven:following", "steven:guarding", "steven:protecting", "steven:distracting" ] }
             },
             "steven:cmd_stay": {
                 "add": { "component_groups": [ "steven:staying" ] },
-                "remove": { "component_groups": [ "steven:following" ] }
+                "remove": { "component_groups": [ "steven:following", "steven:guarding", "steven:protecting", "steven:distracting", "steven:sprint_following" ] }
+            },
+            "steven:cmd_guard": {
+                "add": { "component_groups": [ "steven:guarding" ] },
+                "remove": { "component_groups": [ "steven:following", "steven:staying", "steven:protecting", "steven:distracting", "steven:sprint_following" ] }
+            },
+            "steven:cmd_protect": {
+                "add": { "component_groups": [ "steven:protecting" ] },
+                "remove": { "component_groups": [ "steven:following", "steven:staying", "steven:guarding", "steven:distracting", "steven:sprint_following" ] }
+            },
+            "steven:cmd_distract": {
+                "add": { "component_groups": [ "steven:distracting" ] },
+                "remove": { "component_groups": [ "steven:following", "steven:staying", "steven:guarding", "steven:protecting", "steven:sprint_following", "steven:guarding_return" ] }
+            },
+            "steven:cmd_guard_return": {
+                "add": { "component_groups": [ "steven:guarding_return" ] },
+                "remove": { "component_groups": [ "steven:guarding" ] }
+            },
+            "steven:cmd_guard_resume": {
+                "add": { "component_groups": [ "steven:guarding" ] },
+                "remove": { "component_groups": [ "steven:guarding_return" ] }
+            },
+            "steven:stop_combat": {
+                "remove": { "component_groups": [ "steven:guarding", "steven:protecting", "steven:distracting" ] }
             },
             "steven:on_tame": {}
         }

@@ -222,6 +222,11 @@ function sendStevenMessage(steven, player, text) {
 function handleCommand(steven, player, command, arg) {
     switch (command) {
         case "come": {
+            steven.removeTag("state:guarding");
+            steven.removeTag("state:protecting");
+            steven.removeTag("state:distracting");
+            steven.removeEffect("speed");
+
             // Safety check: ensure he doesn't spawn in blocks or over lava
             // If player is in air, teleport to safe solid ground nearby
             let targetLoc = player.location;
@@ -255,12 +260,20 @@ function handleCommand(steven, player, command, arg) {
             steven.triggerEvent("steven:cmd_stay");
             steven.addTag("state:staying");
             steven.removeTag("state:moving");
+            steven.removeTag("state:guarding");
+            steven.removeTag("state:protecting");
+            steven.removeTag("state:distracting");
+            steven.removeEffect("speed");
             sendStevenMessage(steven, player, "I will stay right here.");
             break;
         case "follow": {
             steven.triggerEvent("steven:cmd_follow");
             steven.addTag("state:moving");
             steven.removeTag("state:staying");
+            steven.removeTag("state:guarding");
+            steven.removeTag("state:protecting");
+            steven.removeTag("state:distracting");
+            steven.removeEffect("speed");
 
             // Ensure owner is set correctly to the player
             const tameable = steven.getComponent("minecraft:tameable");
@@ -355,7 +368,103 @@ function handleCommand(steven, player, command, arg) {
             steven.triggerEvent("steven:cmd_stay");
             steven.removeTag("state:moving");
             steven.removeTag("state:staying");
+            steven.removeTag("state:guarding");
+            steven.removeTag("state:protecting");
+            steven.removeTag("state:distracting");
+            steven.removeTag("state:attacking");
+            steven.removeTag("state:guarding_return");
+            steven.setDynamicProperty("guard_x", undefined);
+            steven.setDynamicProperty("guard_y", undefined);
+            steven.setDynamicProperty("guard_z", undefined);
+            steven.setDynamicProperty("guard_radius", undefined);
+            steven.removeEffect("speed");
             sendStevenMessage(steven, player, "Forgot all tasks. Standing by.");
+            break;
+        }
+        case "guard": {
+            let radius = 30;
+            if (arg) {
+                const parsed = parseInt(arg);
+                if (!isNaN(parsed) && parsed > 0) {
+                    radius = parsed;
+                }
+            }
+            steven.triggerEvent("steven:cmd_guard");
+            steven.removeTag("state:moving");
+            steven.removeTag("state:staying");
+            steven.removeTag("state:protecting");
+            steven.removeTag("state:distracting");
+            steven.removeTag("state:guarding_return");
+            steven.addTag("state:guarding");
+
+            // Save coordinates
+            steven.setDynamicProperty("guard_x", steven.location.x);
+            steven.setDynamicProperty("guard_y", steven.location.y);
+            steven.setDynamicProperty("guard_z", steven.location.z);
+            steven.setDynamicProperty("guard_radius", radius);
+
+            sendStevenMessage(steven, player, `I will guard this area within a ${radius} block radius.`);
+            break;
+        }
+        case "protect": {
+            steven.triggerEvent("steven:cmd_protect");
+            steven.removeTag("state:moving");
+            steven.removeTag("state:staying");
+            steven.removeTag("state:guarding");
+            steven.removeTag("state:distracting");
+            steven.addTag("state:protecting");
+
+            // Ensure owner is set
+            const tameable = steven.getComponent("minecraft:tameable");
+            if (tameable && !steven.hasComponent("minecraft:is_tamed")) {
+                tameable.tame(player);
+            }
+
+            sendStevenMessage(steven, player, "I will protect you at all costs.");
+            break;
+        }
+        case "distract": {
+            steven.triggerEvent("steven:cmd_distract");
+            steven.removeTag("state:moving");
+            steven.removeTag("state:staying");
+            steven.removeTag("state:guarding");
+            steven.removeTag("state:protecting");
+            steven.addTag("state:distracting");
+
+            steven.addEffect("speed", 20000000, { amplifier: 1, showParticles: false });
+            sendStevenMessage(steven, player, "I'll draw their attention!");
+            break;
+        }
+        case "clean": {
+            let radius = 10;
+            if (arg) {
+                const parsed = parseInt(arg);
+                if (!isNaN(parsed) && parsed > 0) {
+                    radius = parsed;
+                }
+            }
+
+            const entities = steven.dimension.getEntities({
+                location: steven.location,
+                maxDistance: radius
+            });
+
+            let count = 0;
+            for (const entity of entities) {
+                if (entity.id === steven.id) continue; // Don't kill self
+                if (entity.typeId === "minecraft:player" || entity.typeId === "minecraft:villager") continue;
+                if (entity.typeId === "minecraft:item" || entity.typeId === "minecraft:xp_orb") continue;
+                if (entity.hasComponent("minecraft:is_tamed") || entity.hasTag("is_tamed")) continue;
+
+                const families = entity.getComponent("minecraft:type_family");
+                if (families && families.hasTypeFamily("tamed")) continue;
+
+                // Safe to kill
+                entity.kill();
+                count++;
+            }
+
+            sendStevenMessage(steven, player, `Cleared ${count} entities within ${radius} blocks.`);
             break;
         }
         default:
@@ -386,6 +495,13 @@ system.runInterval(() => {
             autoEquip(steven);
             autoHeal(steven);
 
+            // Attacking tag check for interaction canceling
+            if (steven.target) {
+                if (!steven.hasTag("state:attacking")) steven.addTag("state:attacking");
+            } else {
+                if (steven.hasTag("state:attacking")) steven.removeTag("state:attacking");
+            }
+
             // Failsafe for following
             if (steven.hasTag("state:moving")) {
                 const tameable = steven.getComponent("minecraft:tameable");
@@ -406,6 +522,64 @@ system.runInterval(() => {
                     }
                 }
             }
+
+            // Guarding
+            if (steven.hasTag("state:guarding")) {
+                const gx = steven.getDynamicProperty("guard_x");
+                const gy = steven.getDynamicProperty("guard_y");
+                const gz = steven.getDynamicProperty("guard_z");
+                const grad = steven.getDynamicProperty("guard_radius");
+
+                if (gx !== undefined && gy !== undefined && gz !== undefined && grad !== undefined) {
+                    const dx = steven.location.x - gx;
+                    const dy = steven.location.y - gy;
+                    const dz = steven.location.z - gz;
+                    const distSq = dx*dx + dy*dy + dz*dz;
+
+                    if (distSq > grad * grad) {
+                        // Exceeded radius: drop target via component group swap unconditionally
+                        if (!steven.hasTag("state:guarding_return")) {
+                            steven.triggerEvent("steven:cmd_guard_return");
+                            steven.addTag("state:guarding_return");
+                        }
+                        const nav = steven.getComponent("minecraft:navigation.walk");
+                        if (nav) nav.moveTo({ x: gx, y: gy, z: gz });
+                    } else if (steven.hasTag("state:guarding_return")) {
+                        steven.removeTag("state:guarding_return");
+                        steven.triggerEvent("steven:cmd_guard_resume"); // re-enable combat components
+                    }
+                }
+            }
+
+            // Protecting
+            if (steven.hasTag("state:protecting")) {
+                // If in combat, and player is > 15 blocks away, drop target and sprint back
+                const players = dimension.getPlayers({ location: steven.location, maxDistance: 100 });
+                if (players.length > 0) {
+                    const nearestPlayer = players[0];
+                    const dx = steven.location.x - nearestPlayer.location.x;
+                    const dy = steven.location.y - nearestPlayer.location.y;
+                    const dz = steven.location.z - nearestPlayer.location.z;
+                    const distanceSq = dx * dx + dy * dy + dz * dz;
+
+                    if (distanceSq > 15 * 15 && steven.target) {
+                        // trigger sprint following
+                        steven.triggerEvent("steven:cmd_sprint_follow");
+                        steven.addTag("state:protecting_return");
+                    } else if (distanceSq <= 5 * 5 && steven.hasTag("state:protecting_return")) {
+                        // resume protecting
+                        steven.removeTag("state:protecting_return");
+                        steven.triggerEvent("steven:cmd_protect");
+                    }
+                }
+            }
+
+            // Distracting
+            if (steven.hasTag("state:distracting")) {
+                // Handled via entity filter distance_to_nearest_player in JSON.
+                // No additional manual scripting required.
+            }
+
         }
     }
 }, 100);
