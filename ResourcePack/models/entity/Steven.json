@@ -8,8 +8,7 @@
             "is_experimental": false
         },
         "components": {
-            "minecraft:physics": {
-            },
+            "minecraft:physics": {},
             "minecraft:collision_box": {
                 "width": 0.6,
                 "height": 1.8
@@ -17,11 +16,17 @@
             "minecraft:movement": {
                 "value": 0.3
             },
+            "minecraft:navigation.walk": {
+                "can_path_over_water": true,
+                "avoid_water": true
+            },
             "minecraft:health": {
                 "value": 20,
                 "max": 20
             },
-            "minecraft:nameable": {
+            "minecraft:nameable": {},
+            "minecraft:type_family": {
+                "family": [ "shifolabs_steven", "mob" ]
             },
             "minecraft:interact": {
                 "interactions": [
@@ -31,11 +36,19 @@
                                 "test": "is_family",
                                 "subject": "other",
                                 "value": "player"
-                            }
+                            },
+                            "event": "shifolabs:open_inventory"
                         },
                         "interact_text": "Open"
                     }
                 ]
+            },
+            "minecraft:behavior.look_at_player": {
+                "priority": 1,
+                "look_distance": 8.0
+            },
+            "minecraft:behavior.random_look_around": {
+                "priority": 2
             },
             "minecraft:inventory": {
                 "container_type": "inventory",
@@ -44,30 +57,12 @@
             },
             "minecraft:equippable": {
                 "slots": [
-                    {
-                        "slot": "slot.weapon.mainhand",
-                        "accepted_items": ["minecraft:wooden_sword", "minecraft:stone_sword", "minecraft:iron_sword", "minecraft:golden_sword", "minecraft:diamond_sword", "minecraft:netherite_sword"]
-                    },
-                    {
-                        "slot": "slot.weapon.offhand",
-                        "accepted_items": []
-                    },
-                    {
-                        "slot": "slot.armor.head",
-                        "accepted_items": ["minecraft:leather_helmet", "minecraft:chainmail_helmet", "minecraft:iron_helmet", "minecraft:golden_helmet", "minecraft:diamond_helmet", "minecraft:netherite_helmet"]
-                    },
-                    {
-                        "slot": "slot.armor.chest",
-                        "accepted_items": ["minecraft:leather_chestplate", "minecraft:chainmail_chestplate", "minecraft:iron_chestplate", "minecraft:golden_chestplate", "minecraft:diamond_chestplate", "minecraft:netherite_chestplate"]
-                    },
-                    {
-                        "slot": "slot.armor.legs",
-                        "accepted_items": ["minecraft:leather_leggings", "minecraft:chainmail_leggings", "minecraft:iron_leggings", "minecraft:golden_leggings", "minecraft:diamond_leggings", "minecraft:netherite_leggings"]
-                    },
-                    {
-                        "slot": "slot.armor.feet",
-                        "accepted_items": ["minecraft:leather_boots", "minecraft:chainmail_boots", "minecraft:iron_boots", "minecraft:golden_boots", "minecraft:diamond_boots", "minecraft:netherite_boots"]
-                    }
+                    { "slot": "slot.weapon.mainhand" },
+                    { "slot": "slot.weapon.offhand" },
+                    { "slot": "slot.armor.head" },
+                    { "slot": "slot.armor.chest" },
+                    { "slot": "slot.armor.legs" },
+                    { "slot": "slot.armor.feet" }
                 ]
             }
         }
