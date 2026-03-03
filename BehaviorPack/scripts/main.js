@@ -1,6 +1,5 @@
 import { world, system, EquipmentSlot, ItemStack, ItemComponentTypes } from "@minecraft/server";
 import { ActionFormData, MessageFormData, ModalFormData } from "@minecraft/server-ui";
-import * as serverAdmin from "@minecraft/server-admin";
 
 // Basic initialization to ensure the script is running
 console.warn("Steven AI Assistant BP initialized.");
